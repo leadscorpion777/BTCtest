@@ -120,7 +120,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 
 			regimeSeries[0] = (int)regime;
 
-			// 7. Coloration
+			// 7. Coloration : BackBrushAll = MEME couleur sur tous les panneaux (prix + indicateur)
 			if (ColorBackground)
 			{
 				Brush col = null;
@@ -129,13 +129,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 					case BTCRegimeType.Trend:	col = new SolidColorBrush(Color.FromArgb(110, 255, 140, 0));  break;	// Orange
 					case BTCRegimeType.Range:	col = new SolidColorBrush(Color.FromArgb(110, 30, 144, 255)); break;	// Blue
 				}
-				BackBrush = col;
-
-				string tag = "regHL_" + CurrentBar;
-				if (col != null)
-					Draw.RegionHighlightX(this, tag, 0, 0, col);
-				else
-					RemoveDrawObject(tag);
+				BackBrushAll = col;
 			}
 
 			// 8. Label regime
