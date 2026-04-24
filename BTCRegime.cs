@@ -40,7 +40,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 				Calculate					= Calculate.OnBarClose;
 				IsOverlay					= false;
 				DisplayInDataBox			= true;
-				DrawOnPricePanel			= false;
+				DrawOnPricePanel			= true;
 				DrawHorizontalGridLines		= true;
 				DrawVerticalGridLines		= true;
 				PaintPriceMarkers			= true;
