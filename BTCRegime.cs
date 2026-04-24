@@ -136,15 +136,24 @@ namespace NinjaTrader.NinjaScript.Indicators
 
 			regimeSeries[0] = (int)regime;
 
-			// 8. Coloration du fond - BackBrushAll = tous les panneaux (prix + indicateur)
+			// 8. Coloration du fond
+			//    - BackBrush  : panneau de l'indicateur
+			//    - Draw.RegionHighlightX : bande verticale sur le panneau prix (full hauteur)
 			if (ColorBackground)
 			{
+				Brush col = null;
 				switch (regime)
 				{
-					case BTCRegimeType.Trend:	BackBrushAll = new SolidColorBrush(Color.FromArgb(40, 0, 200, 0));   break;
-					case BTCRegimeType.Range:	BackBrushAll = new SolidColorBrush(Color.FromArgb(40, 220, 0, 0));   break;
-					default:					BackBrushAll = null; break;
+					case BTCRegimeType.Trend:	col = new SolidColorBrush(Color.FromArgb(40, 0, 200, 0));   break;
+					case BTCRegimeType.Range:	col = new SolidColorBrush(Color.FromArgb(40, 220, 0, 0));   break;
 				}
+				BackBrush = col;
+
+				string tag = "regHL_" + CurrentBar;
+				if (col != null)
+					Draw.RegionHighlightX(this, tag, 0, 0, col);
+				else
+					RemoveDrawObject(tag);
 			}
 
 			// 9. Label texte regime dans le coin (Draw.TextFixed avec tag unique = MAJ en place)
