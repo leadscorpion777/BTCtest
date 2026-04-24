@@ -21,7 +21,6 @@ namespace NinjaTrader.NinjaScript.Indicators
 	public class BTCRegime : Indicator
 	{
 		#region Variables
-		private ADX				adx;
 		private MAX				maxHigh;
 		private MIN				minLow;
 		private Series<double>	trSeries;
@@ -33,7 +32,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 		{
 			if (State == State.SetDefaults)
 			{
-				Description					= "BTCRegime - detecte si le marche est en TENDANCE, RANGE ou NEUTRE. Combine Choppiness Index + ADX.";
+				Description					= "BTCRegime - detecte si le marche est en TENDANCE, RANGE ou NEUTRE via Choppiness Index.";
 				Name						= "BTCRegime";
 				Calculate					= Calculate.OnBarClose;
 				IsOverlay					= false;
@@ -48,23 +47,16 @@ namespace NinjaTrader.NinjaScript.Indicators
 				Period						= 14;
 				ChoppinessRangeThreshold	= 61.8;
 				ChoppinessTrendThreshold	= 38.2;
-				ADXTrendThreshold			= 25;
-				ADXRangeThreshold			= 20;
 				ShowRegimeLabel				= true;
 				ColorBackground				= true;
 
-				// Plots (le nom apparait dans le DataBox / legende)
-				AddPlot(new Stroke(Brushes.DodgerBlue, 2),	PlotStyle.Line, "Choppiness (bleu)");
-				AddPlot(new Stroke(Brushes.Orange, 2),		PlotStyle.Line, "ADX (orange)");
+				AddPlot(new Stroke(Brushes.DodgerBlue, 2), PlotStyle.Line, "Choppiness");
 
-				// Lignes de seuil
-				AddLine(new Stroke(Brushes.Red,			DashStyleHelper.Dash, 1), 61.8,	"Chop seuil RANGE");
-				AddLine(new Stroke(Brushes.Green,		DashStyleHelper.Dash, 1), 38.2,	"Chop seuil TREND");
-				AddLine(new Stroke(Brushes.Goldenrod,	DashStyleHelper.Dot,  1), 25,	"ADX seuil TREND");
+				AddLine(new Stroke(Brushes.Red,		DashStyleHelper.Dash, 1), 61.8, "Seuil RANGE");
+				AddLine(new Stroke(Brushes.Green,	DashStyleHelper.Dash, 1), 38.2, "Seuil TREND");
 			}
 			else if (State == State.DataLoaded)
 			{
-				adx					= ADX(Period);
 				maxHigh				= MAX(High, Period);
 				minLow				= MIN(Low, Period);
 				trSeries			= new Series<double>(this);
@@ -88,7 +80,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 							   Math.Abs(Low[0]  - Close[1])));
 			trSeries[0] = tr;
 
-			// 2. Somme TR sur la periode
+			// 2. Somme TR
 			double sumTR = 0;
 			for (int i = 0; i < Period; i++)
 				sumTR += trSeries[i];
@@ -96,31 +88,21 @@ namespace NinjaTrader.NinjaScript.Indicators
 			// 3. Range total
 			double rangeTotal = maxHigh[0] - minLow[0];
 
-			// 4. Choppiness Index
+			// 4. Choppiness
 			double chop = 50;
 			if (rangeTotal > 0 && sumTR > 0)
 				chop = 100.0 * Math.Log10(sumTR / rangeTotal) / Math.Log10(Period);
 			choppinessSeries[0] = chop;
+			Choppiness[0] = chop;
 
-			// 5. Plots
-			Choppiness[0]	= chop;
-			ADXValue[0]		= adx[0];
-
-			// 6. Regime
+			// 5. Regime (Choppiness uniquement)
 			BTCRegimeType regime = BTCRegimeType.Neutral;
-			bool chopSaysTrend	= chop < ChoppinessTrendThreshold;
-			bool chopSaysRange	= chop > ChoppinessRangeThreshold;
-			bool adxSaysTrend	= adx[0] > ADXTrendThreshold;
-			bool adxSaysRange	= adx[0] < ADXRangeThreshold;
-
-			if (chopSaysTrend && adxSaysTrend)
-				regime = BTCRegimeType.Trend;
-			else if (chopSaysRange && adxSaysRange)
-				regime = BTCRegimeType.Range;
+			if (chop < ChoppinessTrendThreshold)		regime = BTCRegimeType.Trend;
+			else if (chop > ChoppinessRangeThreshold)	regime = BTCRegimeType.Range;
 
 			regimeSeries[0] = (int)regime;
 
-			// 7. Coloration : BackBrushAll = MEME couleur sur tous les panneaux (prix + indicateur)
+			// 6. Coloration sur tous panneaux
 			if (ColorBackground)
 			{
 				Brush col = null;
@@ -132,7 +114,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 				BackBrushAll = col;
 			}
 
-			// 8. Label regime
+			// 7. Label
 			if (ShowRegimeLabel)
 			{
 				string label;
@@ -143,7 +125,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 					case BTCRegimeType.Range:	label = "REGIME : RANGE";   col = Brushes.DodgerBlue;	break;
 					default:					label = "REGIME : NEUTRAL"; col = Brushes.Gray;			break;
 				}
-				label += string.Format("\nChop(bleu)={0:F1}  ADX(orange)={1:F1}", chop, adx[0]);
+				label += string.Format("\nChop = {0:F1}", chop);
 				Draw.TextFixed(this, "BTCRegimeLbl", label, TextPosition.TopRight, col, new SimpleFont("Consolas", 12), Brushes.Transparent, Brushes.Transparent, 0);
 			}
 		}
@@ -154,16 +136,16 @@ namespace NinjaTrader.NinjaScript.Indicators
 			if (regimeSeries == null || barsAgo >= regimeSeries.Count) return 0;
 			return regimeSeries[barsAgo];
 		}
-		public bool IsTrend(int barsAgo) { return RegimeValue(barsAgo) == 1; }
-		public bool IsRange(int barsAgo) { return RegimeValue(barsAgo) == -1; }
-		public bool IsNeutral(int barsAgo) { return RegimeValue(barsAgo) == 0; }
+		public bool IsTrend(int barsAgo)	{ return RegimeValue(barsAgo) == 1; }
+		public bool IsRange(int barsAgo)	{ return RegimeValue(barsAgo) == -1; }
+		public bool IsNeutral(int barsAgo)	{ return RegimeValue(barsAgo) == 0; }
 		#endregion
 
 		#region Properties
 
 		[NinjaScriptProperty]
 		[Range(2, 200)]
-		[Display(Name = "Period", Description = "Periode pour ADX / Choppiness (defaut 14)",
+		[Display(Name = "Period", Description = "Periode Choppiness (defaut 14)",
 			Order = 1, GroupName = "1. Parametres")]
 		public int Period { get; set; }
 
@@ -180,34 +162,18 @@ namespace NinjaTrader.NinjaScript.Indicators
 		public double ChoppinessTrendThreshold { get; set; }
 
 		[NinjaScriptProperty]
-		[Range(10, 50)]
-		[Display(Name = "ADX seuil TREND", Description = "Au-dessus = vraie tendance (defaut 25)",
-			Order = 4, GroupName = "1. Parametres")]
-		public double ADXTrendThreshold { get; set; }
-
-		[NinjaScriptProperty]
-		[Range(5, 30)]
-		[Display(Name = "ADX seuil RANGE", Description = "En-dessous = pas de tendance (defaut 20)",
-			Order = 5, GroupName = "1. Parametres")]
-		public double ADXRangeThreshold { get; set; }
-
-		[NinjaScriptProperty]
 		[Display(Name = "Afficher label regime", Description = "Label coin sup. droit",
-			Order = 6, GroupName = "2. Affichage")]
+			Order = 4, GroupName = "2. Affichage")]
 		public bool ShowRegimeLabel { get; set; }
 
 		[NinjaScriptProperty]
 		[Display(Name = "Colorer fond", Description = "Bandes verticales sur prix + indicateur",
-			Order = 7, GroupName = "2. Affichage")]
+			Order = 5, GroupName = "2. Affichage")]
 		public bool ColorBackground { get; set; }
 
 		[Browsable(false)]
 		[XmlIgnore]
 		public Series<double> Choppiness { get { return Values[0]; } }
-
-		[Browsable(false)]
-		[XmlIgnore]
-		public Series<double> ADXValue { get { return Values[1]; } }
 
 		#endregion
 	}
