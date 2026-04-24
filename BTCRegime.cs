@@ -126,8 +126,8 @@ namespace NinjaTrader.NinjaScript.Indicators
 				Brush col = null;
 				switch (regime)
 				{
-					case BTCRegimeType.Trend:	col = new SolidColorBrush(Color.FromArgb(40, 0, 200, 0));   break;
-					case BTCRegimeType.Range:	col = new SolidColorBrush(Color.FromArgb(40, 220, 0, 0));   break;
+					case BTCRegimeType.Trend:	col = new SolidColorBrush(Color.FromArgb(110, 255, 140, 0));  break;	// Orange
+					case BTCRegimeType.Range:	col = new SolidColorBrush(Color.FromArgb(110, 30, 144, 255)); break;	// Blue
 				}
 				BackBrush = col;
 
@@ -145,8 +145,8 @@ namespace NinjaTrader.NinjaScript.Indicators
 				Brush col;
 				switch (regime)
 				{
-					case BTCRegimeType.Trend:	label = "REGIME : TREND";   col = Brushes.LimeGreen;	break;
-					case BTCRegimeType.Range:	label = "REGIME : RANGE";   col = Brushes.OrangeRed;	break;
+					case BTCRegimeType.Trend:	label = "REGIME : TREND";   col = Brushes.DarkOrange;	break;
+					case BTCRegimeType.Range:	label = "REGIME : RANGE";   col = Brushes.DodgerBlue;	break;
 					default:					label = "REGIME : NEUTRAL"; col = Brushes.Gray;			break;
 				}
 				label += string.Format("\nChop(bleu)={0:F1}  ADX(orange)={1:F1}", chop, adx[0]);
