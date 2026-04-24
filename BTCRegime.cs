@@ -21,21 +21,19 @@ namespace NinjaTrader.NinjaScript.Indicators
 	public class BTCRegime : Indicator
 	{
 		#region Variables
-		private ATR				atr;
 		private ADX				adx;
 		private MAX				maxHigh;
 		private MIN				minLow;
 		private Series<double>	trSeries;
 		private Series<double>	choppinessSeries;
-		private Series<double>	atrPctSeries;
-		private Series<int>		regimeSeries;	// 1 = Trend, -1 = Range, 0 = Neutral
+		private Series<int>		regimeSeries;
 		#endregion
 
 		protected override void OnStateChange()
 		{
 			if (State == State.SetDefaults)
 			{
-				Description					= "BTCRegime - detecte si le marche est en TENDANCE, RANGE ou NEUTRE. Combine Choppiness Index + ADX. ATR pur affiche pour reference volatilite.";
+				Description					= "BTCRegime - detecte si le marche est en TENDANCE, RANGE ou NEUTRE. Combine Choppiness Index + ADX.";
 				Name						= "BTCRegime";
 				Calculate					= Calculate.OnBarClose;
 				IsOverlay					= false;
@@ -47,7 +45,6 @@ namespace NinjaTrader.NinjaScript.Indicators
 				ScaleJustification			= NinjaTrader.Gui.Chart.ScaleJustification.Right;
 				IsSuspendedWhileInactive	= true;
 
-				// Parametres
 				Period						= 14;
 				ChoppinessRangeThreshold	= 61.8;
 				ChoppinessTrendThreshold	= 38.2;
@@ -56,25 +53,22 @@ namespace NinjaTrader.NinjaScript.Indicators
 				ShowRegimeLabel				= true;
 				ColorBackground				= true;
 
-				// Plots
-				AddPlot(new Stroke(Brushes.DodgerBlue, 2),	PlotStyle.Line, "Choppiness");
-				AddPlot(new Stroke(Brushes.Orange, 2),		PlotStyle.Line, "ADX");
-				AddPlot(new Stroke(Brushes.Gray, 1),		PlotStyle.Line, "ATR%");
+				// Plots (le nom apparait dans le DataBox / legende)
+				AddPlot(new Stroke(Brushes.DodgerBlue, 2),	PlotStyle.Line, "Choppiness (bleu)");
+				AddPlot(new Stroke(Brushes.Orange, 2),		PlotStyle.Line, "ADX (orange)");
 
-				// Lignes de seuil (Choppiness 38.2 / 61.8 = Fibonacci, standard)
-				AddLine(new Stroke(Brushes.Red,			DashStyleHelper.Dash, 1), 61.8,	"ChopRange");
-				AddLine(new Stroke(Brushes.Green,		DashStyleHelper.Dash, 1), 38.2,	"ChopTrend");
-				AddLine(new Stroke(Brushes.Goldenrod,	DashStyleHelper.Dot,  1), 25,	"ADXTrend");
+				// Lignes de seuil
+				AddLine(new Stroke(Brushes.Red,			DashStyleHelper.Dash, 1), 61.8,	"Chop seuil RANGE");
+				AddLine(new Stroke(Brushes.Green,		DashStyleHelper.Dash, 1), 38.2,	"Chop seuil TREND");
+				AddLine(new Stroke(Brushes.Goldenrod,	DashStyleHelper.Dot,  1), 25,	"ADX seuil TREND");
 			}
 			else if (State == State.DataLoaded)
 			{
-				atr					= ATR(Period);
 				adx					= ADX(Period);
 				maxHigh				= MAX(High, Period);
 				minLow				= MIN(Low, Period);
 				trSeries			= new Series<double>(this);
 				choppinessSeries	= new Series<double>(this);
-				atrPctSeries		= new Series<double>(this);
 				regimeSeries		= new Series<int>(this);
 			}
 		}
@@ -84,7 +78,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 			if (CurrentBar < Period)
 				return;
 
-			// 1. True Range de la barre courante
+			// 1. True Range
 			double tr;
 			if (CurrentBar == 0)
 				tr = High[0] - Low[0];
@@ -94,34 +88,26 @@ namespace NinjaTrader.NinjaScript.Indicators
 							   Math.Abs(Low[0]  - Close[1])));
 			trSeries[0] = tr;
 
-			// 2. Somme des TR sur la periode
+			// 2. Somme TR sur la periode
 			double sumTR = 0;
 			for (int i = 0; i < Period; i++)
 				sumTR += trSeries[i];
 
-			// 3. Range total sur la periode (plus haut - plus bas)
+			// 3. Range total
 			double rangeTotal = maxHigh[0] - minLow[0];
 
-			// 4. Choppiness Index = 100 * log10(sumTR / range) / log10(period)
-			//    Borne haute (~100) = beaucoup d'agitation pour peu de progres = RANGE
-			//    Borne basse (~0)   = peu d'agitation pour beaucoup de progres = TREND
-			double chop = 50; // valeur neutre par defaut
+			// 4. Choppiness Index
+			double chop = 50;
 			if (rangeTotal > 0 && sumTR > 0)
 				chop = 100.0 * Math.Log10(sumTR / rangeTotal) / Math.Log10(Period);
 			choppinessSeries[0] = chop;
 
-			// 5. ATR en % du prix (volatilite normalisee)
-			double atrPct = (Close[0] > 0) ? (atr[0] / Close[0] * 100.0) : 0;
-			atrPctSeries[0] = atrPct;
-
-			// 6. Plots
+			// 5. Plots
 			Choppiness[0]	= chop;
 			ADXValue[0]		= adx[0];
-			ATRPercent[0]	= atrPct;
 
-			// 7. Determination du regime
+			// 6. Regime
 			BTCRegimeType regime = BTCRegimeType.Neutral;
-
 			bool chopSaysTrend	= chop < ChoppinessTrendThreshold;
 			bool chopSaysRange	= chop > ChoppinessRangeThreshold;
 			bool adxSaysTrend	= adx[0] > ADXTrendThreshold;
@@ -131,14 +117,10 @@ namespace NinjaTrader.NinjaScript.Indicators
 				regime = BTCRegimeType.Trend;
 			else if (chopSaysRange && adxSaysRange)
 				regime = BTCRegimeType.Range;
-			else
-				regime = BTCRegimeType.Neutral;
 
 			regimeSeries[0] = (int)regime;
 
-			// 8. Coloration du fond
-			//    - BackBrush  : panneau de l'indicateur
-			//    - Draw.RegionHighlightX : bande verticale sur le panneau prix (full hauteur)
+			// 7. Coloration
 			if (ColorBackground)
 			{
 				Brush col = null;
@@ -156,7 +138,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 					RemoveDrawObject(tag);
 			}
 
-			// 9. Label texte regime dans le coin (Draw.TextFixed avec tag unique = MAJ en place)
+			// 8. Label regime
 			if (ShowRegimeLabel)
 			{
 				string label;
@@ -167,12 +149,12 @@ namespace NinjaTrader.NinjaScript.Indicators
 					case BTCRegimeType.Range:	label = "REGIME : RANGE";   col = Brushes.OrangeRed;	break;
 					default:					label = "REGIME : NEUTRAL"; col = Brushes.Gray;			break;
 				}
-				label += string.Format("\nChop={0:F1}  ADX={1:F1}  ATR%={2:F2}", chop, adx[0], atrPct);
+				label += string.Format("\nChop(bleu)={0:F1}  ADX(orange)={1:F1}", chop, adx[0]);
 				Draw.TextFixed(this, "BTCRegimeLbl", label, TextPosition.TopRight, col, new SimpleFont("Consolas", 12), Brushes.Transparent, Brushes.Transparent, 0);
 			}
 		}
 
-		#region Public access (pour strategies qui consomment le regime)
+		#region Public access
 		public int RegimeValue(int barsAgo)
 		{
 			if (regimeSeries == null || barsAgo >= regimeSeries.Count) return 0;
@@ -187,41 +169,41 @@ namespace NinjaTrader.NinjaScript.Indicators
 
 		[NinjaScriptProperty]
 		[Range(2, 200)]
-		[Display(Name = "Period", Description = "Periode pour ATR / ADX / Choppiness (defaut 14)",
+		[Display(Name = "Period", Description = "Periode pour ADX / Choppiness (defaut 14)",
 			Order = 1, GroupName = "1. Parametres")]
 		public int Period { get; set; }
 
 		[NinjaScriptProperty]
 		[Range(50, 100)]
-		[Display(Name = "Choppiness seuil RANGE", Description = "Au-dessus de ce seuil = marche en range (defaut 61.8)",
+		[Display(Name = "Choppiness seuil RANGE", Description = "Au-dessus = range (defaut 61.8)",
 			Order = 2, GroupName = "1. Parametres")]
 		public double ChoppinessRangeThreshold { get; set; }
 
 		[NinjaScriptProperty]
 		[Range(0, 50)]
-		[Display(Name = "Choppiness seuil TREND", Description = "En-dessous de ce seuil = marche en tendance (defaut 38.2)",
+		[Display(Name = "Choppiness seuil TREND", Description = "En-dessous = tendance (defaut 38.2)",
 			Order = 3, GroupName = "1. Parametres")]
 		public double ChoppinessTrendThreshold { get; set; }
 
 		[NinjaScriptProperty]
 		[Range(10, 50)]
-		[Display(Name = "ADX seuil TREND", Description = "Au-dessus de ce seuil ADX = vraie tendance (defaut 25)",
+		[Display(Name = "ADX seuil TREND", Description = "Au-dessus = vraie tendance (defaut 25)",
 			Order = 4, GroupName = "1. Parametres")]
 		public double ADXTrendThreshold { get; set; }
 
 		[NinjaScriptProperty]
 		[Range(5, 30)]
-		[Display(Name = "ADX seuil RANGE", Description = "En-dessous de ce seuil ADX = pas de tendance (defaut 20)",
+		[Display(Name = "ADX seuil RANGE", Description = "En-dessous = pas de tendance (defaut 20)",
 			Order = 5, GroupName = "1. Parametres")]
 		public double ADXRangeThreshold { get; set; }
 
 		[NinjaScriptProperty]
-		[Display(Name = "Afficher label regime", Description = "Affiche le label REGIME en haut a droite",
+		[Display(Name = "Afficher label regime", Description = "Label coin sup. droit",
 			Order = 6, GroupName = "2. Affichage")]
 		public bool ShowRegimeLabel { get; set; }
 
 		[NinjaScriptProperty]
-		[Display(Name = "Colorer fond panneau", Description = "Colore le fond du panneau (vert=trend, rouge=range)",
+		[Display(Name = "Colorer fond", Description = "Bandes verticales sur prix + indicateur",
 			Order = 7, GroupName = "2. Affichage")]
 		public bool ColorBackground { get; set; }
 
@@ -232,10 +214,6 @@ namespace NinjaTrader.NinjaScript.Indicators
 		[Browsable(false)]
 		[XmlIgnore]
 		public Series<double> ADXValue { get { return Values[1]; } }
-
-		[Browsable(false)]
-		[XmlIgnore]
-		public Series<double> ATRPercent { get { return Values[2]; } }
 
 		#endregion
 	}
