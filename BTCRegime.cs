@@ -136,14 +136,14 @@ namespace NinjaTrader.NinjaScript.Indicators
 
 			regimeSeries[0] = (int)regime;
 
-			// 8. Coloration du fond du panneau indicateur
+			// 8. Coloration du fond - BackBrushAll = tous les panneaux (prix + indicateur)
 			if (ColorBackground)
 			{
 				switch (regime)
 				{
-					case BTCRegimeType.Trend:	BackBrush = new SolidColorBrush(Color.FromArgb(40, 0, 200, 0));   break;
-					case BTCRegimeType.Range:	BackBrush = new SolidColorBrush(Color.FromArgb(40, 220, 0, 0));   break;
-					default:					BackBrush = null; break;
+					case BTCRegimeType.Trend:	BackBrushAll = new SolidColorBrush(Color.FromArgb(40, 0, 200, 0));   break;
+					case BTCRegimeType.Range:	BackBrushAll = new SolidColorBrush(Color.FromArgb(40, 220, 0, 0));   break;
+					default:					BackBrushAll = null; break;
 				}
 			}
 
