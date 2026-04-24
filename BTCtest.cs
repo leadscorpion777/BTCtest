@@ -70,12 +70,33 @@ namespace NinjaTrader.NinjaScript.Strategies
 			sb.AppendLine("Bars         : " + (Bars != null ? Bars.BarsPeriod.ToString() : "?"));
 			sb.AppendLine("========================================");
 
-			var perf = SystemPerformance.AllTrades.TradesPerformance;
-			sb.AppendLine("Trades       : " + SystemPerformance.AllTrades.Count);
+			var all			= SystemPerformance.AllTrades;
+			var perf		= all.TradesPerformance;
+			int nTrades		= all.Count;
+			int nWins		= all.WinningTrades.Count;
+			int nLosses		= all.LosingTrades.Count;
+			double winsPnL	= all.WinningTrades.TradesPerformance.Currency.CumProfit;
+			double lossPnL	= all.LosingTrades.TradesPerformance.Currency.CumProfit;
+			double pf		= (lossPnL != 0) ? winsPnL / Math.Abs(lossPnL) : 0;
+			double winrate	= (nTrades > 0) ? (double)nWins / nTrades * 100.0 : 0;
+
+			// Max DD calcule a la main depuis equity curve (pas de propriete fiable sur TradesPerformanceValues)
+			double maxDD = 0;
+			double peak = 0;
+			double equity = 0;
+			for (int i = 0; i < nTrades; i++)
+			{
+				equity += all[i].ProfitCurrency;
+				if (equity > peak) peak = equity;
+				double dd = peak - equity;
+				if (dd > maxDD) maxDD = dd;
+			}
+
+			sb.AppendLine("Trades       : " + nTrades + " (W " + nWins + " / L " + nLosses + ")");
 			sb.AppendLine("Net PnL      : " + perf.Currency.CumProfit.ToString("F2") + " $");
-			sb.AppendLine("Profit Factor: " + perf.ProfitFactor.ToString("F2"));
-			sb.AppendLine("Max DD       : " + perf.Currency.DrawDown.ToString("F2") + " $");
-			sb.AppendLine("Winrate      : " + (perf.Percent.Winners * 100).ToString("F1") + " %");
+			sb.AppendLine("Profit Factor: " + pf.ToString("F2"));
+			sb.AppendLine("Max DD       : " + maxDD.ToString("F2") + " $");
+			sb.AppendLine("Winrate      : " + winrate.ToString("F1") + " %");
 			sb.AppendLine("Avg Trade    : " + perf.Currency.AverageProfit.ToString("F2") + " $");
 			sb.AppendLine("========================================");
 
